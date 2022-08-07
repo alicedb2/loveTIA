@@ -1,4 +1,4 @@
-# vcTIA - Voltage Controlled TIA chip
+# &#2764; - Voltage Controlled TIA chip
 
 [![vcTIA - Atari 2600 TIA and Arduino](https://img.youtube.com/vi/jGm9PULHrRM/0.jpg)](https://www.youtube.com/watch?v=jGm9PULHrRM)
 
