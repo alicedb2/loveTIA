@@ -17,6 +17,23 @@ ADDR_VOL0 = 0b1001
 ADDR_VOL1 = 0b1010
 
 
+# 0 Silent
+# 1 Saw
+# 2 Disto
+# 3 Engine
+# 4 Square
+# 5 Square
+# 6 Bass
+# 7 Pitfall
+# 8 Noise
+# 9 Noise
+# 10 Noise
+# 11 Silent
+# 12 Lead
+# 13 Lead
+# 14 Buzz low
+# 15 Buzz high
+
 unique_waveforms = (1, 2, 3, 4, 6, 7, 8, 12, 14, 15)
 
 tia_rw_pin = Pin(5, Pin.OUT, value=0)
@@ -31,6 +48,27 @@ adc_divisor = ADC(Pin(28))
 ##########################################################
 ## Start oscillator to original Atari 2600 NTSC 3.58MHz ##
 ##########################################################
+
+# A2600 NTSC crystal frequency
+ATARI_FREQ = 3_579_545
+
+# This is the RP2040/Pico register
+# that will allow us to change
+# the clock division of state machine 0
+# on the fly without having to restart
+# the state machine
+ADDR_SM0_CLKDIV = 0x50200000 + 0x0C8
+
+# The state machine will provide a
+# square clock signal to the TIA
+@rp2.asm_pio(set_init=rp2.PIO.OUT_LOW)
+def squarewave():
+    set(pins, 1)
+    set(pins, 0)
+
+sm0 = rp2.StateMachine(0, squarewave, freq=freq(), set_base=Pin(17))
+sm0.active(1)
+
 # This calculates the required state machine
 # clock division given a target clock frequency
 def sm_div_calc(target_f):
@@ -48,27 +86,6 @@ def sm_div_calc(target_f):
             raise ValueError("freq out of range")
     return division << 8
 
-
-# A2600 NTSC crystal frequency
-ATARI_FREQ = 3_579_545
-
-# This is the RP2040/Pico register
-# that will allow us to change
-# the clock division of state machine 0
-# on the fly without having to restart
-# the state machine
-ADDR_SM0_CLKDIV = 0x50200000 + 0x0C8
-
-
-@rp2.asm_pio(set_init=rp2.PIO.OUT_LOW)
-def squarewave():
-    set(pins, 1)
-    set(pins, 0)
-
-sm0 = rp2.StateMachine(0, squarewave, freq=freq(), set_base=Pin(17))
-sm0.active(1)
-
-
 def set_clock_freq(target_freq=ATARI_FREQ):
     mem32[ADDR_SM0_CLKDIV] = sm_div_calc(int(target_freq))
 
@@ -82,10 +99,19 @@ def loop(voice=2):
     last_divisor_val = -1
     last_waveform_val = -1
 
-    setVolume(15, voice)
-
     while True:
-        sleep(0.05)
+
+        sleep(0.001)
+
+        # We only have 3 ADC pins on the pico, so
+        # until we replace a pot with an encoder
+        # we set the volume to the maximum
+        # ...somehow I have to do this here,
+        # doesn't work before the while True,
+        # doesn't work before calling loop() either.
+        setVolume(15, voice)
+
+
 
         # Volume
         #pot_read = oversampled_read(adc_volume, 4)
@@ -101,7 +127,6 @@ def loop(voice=2):
         if pitch_val != last_pitch_val:
             setPitch(pitch_val + 1, voice)
             last_pitch_val = pitch_val
-            # print(f"pitch_{pitch_val} pot_{pot_read}")
 
         # Clock divisor
         divisor_val = oversampled_read(adc_divisor, 4)
@@ -109,8 +134,6 @@ def loop(voice=2):
             divisor = map(divisor_val, 300, 60000, 1, 128)
             set_clock_freq(ATARI_FREQ/divisor)
             last_divisor_val = divisor_val
-            # print(f"potread_{divisor_val} divisor_{divisor}")
-
 
         # Waveform
         pot_read = oversampled_read(adc_waveform, 4)
@@ -118,23 +141,6 @@ def loop(voice=2):
         if waveform_val != last_waveform_val:
             setWaveform(waveform_val, voice)
             last_waveform_val = waveform_val
-            # print(f"waveform_{waveform_val} pot_{pot_read}")
-
-
-def map(value, input_min, input_max, output_min, output_max):
-
-    if value < input_min: return output_min
-    if value > input_max: return output_max
-
-    out_val = (value - input_min) * (output_max - output_min) / (
-        input_max - input_min
-    ) + output_min
-    return out_val
-
-
-def binval(value, input_min, input_max, nb_bins):
-    bin_width = (input_max - input_min) / nb_bins
-    return max(0, min(nb_bins - 1, int((value - input_min) / bin_width)))
 
 
 def oversampled_read(adc, nb_oversampling_bits):
@@ -214,3 +220,20 @@ def setPitch(divisor, voice=2):
         tia_rw_pin.low()
 
 
+def map(value, input_min, input_max, output_min, output_max):
+
+    if value < input_min: return output_min
+    if value > input_max: return output_max
+
+    out_val = (value - input_min) * (output_max - output_min) / (
+        input_max - input_min
+    ) + output_min
+    return out_val
+
+
+def binval(value, input_min, input_max, nb_bins):
+    bin_width = (input_max - input_min) / nb_bins
+    return max(0, min(nb_bins - 1, int((value - input_min) / bin_width)))
+
+
+loop()
