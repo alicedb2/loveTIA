@@ -1,4 +1,4 @@
-# :heart:TIA
+# <p align="center">:heart:TIA</p>
 
 This is a stripped down version of the [MIDIbox TIA]. 
 
