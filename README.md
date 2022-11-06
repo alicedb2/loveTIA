@@ -1,4 +1,4 @@
-# :heart:TIA
+# <p align="center">:heart:TIA</p>
 
 This is a stripped down version of the [MIDIbox TIA]. It uses a Raspberry Pi Pico and MicroPython to control an Atari 2600 TIA chip for some old-school sound goodness.
 
