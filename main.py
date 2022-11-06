@@ -2,24 +2,29 @@ import rp2
 from time import sleep
 from machine import Pin, freq, mem32, ADC
 
+
 ### Address bus constants ###
+
 # A2600 waveform addresses
 ADDR_CTRL0 = 0b0101
 ADDR_CTRL1 = 0b0110
+
 # A2600 pitch addresse
 # Allow to set divisors of
 # a fundamental frequency
 # (something between 30-32kHz, not sure)
 ADDR_FREQ0 = 0b0111
 ADDR_FREQ1 = 0b1000
+
 # A2600 volume addresses
 ADDR_VOL0 = 0b1001
 ADDR_VOL1 = 0b1010
 
 
+# Waveforms
 # 0 Silent
 # 1 Saw
-# 2 Disto
+# 2 Distortion
 # 3 Engine
 # 4 Square
 # 5 Square
@@ -87,6 +92,11 @@ def sm_div_calc(target_f):
     return division << 8
 
 def set_clock_freq(target_freq=ATARI_FREQ):
+
+    # Just to make absolutely sure that
+    # whatever happens we never overclock the TIA
+    target_freq = max(1, min(ATARI_FREQ, target_freq))
+
     mem32[ADDR_SM0_CLKDIV] = sm_div_calc(int(target_freq))
 
 
@@ -109,9 +119,8 @@ def loop(voice=2):
         # ...somehow I have to do this here,
         # doesn't work before the while True,
         # doesn't work before calling loop() either.
+        # wth
         setVolume(15, voice)
-
-
 
         # Volume
         #pot_read = oversampled_read(adc_volume, 4)
@@ -129,10 +138,10 @@ def loop(voice=2):
             last_pitch_val = pitch_val
 
         # Clock divisor
-        divisor_val = oversampled_read(adc_divisor, 4)
+        pot_read = oversampled_read(adc_divisor, 4)
+        divisor_val = map(pot_read, 300, 60000, 1, 128)
         if divisor_val != last_divisor_val:
-            divisor = map(divisor_val, 300, 60000, 1, 128)
-            set_clock_freq(ATARI_FREQ/divisor)
+            set_clock_freq(ATARI_FREQ/divisor_val)
             last_divisor_val = divisor_val
 
         # Waveform
@@ -171,7 +180,9 @@ def setVolume(volume, voice=2):
         tia_rw_pin.high()
         setTIApins(ADDR_VOL0, volume)
         tia_rw_pin.low()
+
     sleep(0.001)
+
     if voice == 1 or voice == 2:
         tia_rw_pin.high()
         setTIApins(ADDR_VOL1, volume)
@@ -192,7 +203,9 @@ def setWaveform(waveform, voice=2):
         tia_rw_pin.high()
         setTIApins(ADDR_CTRL0, unique_waveforms[waveform])
         tia_rw_pin.low()
-        sleep(0.001)
+
+    sleep(0.001)
+
     if voice == 1 or voice == 2:
         tia_rw_pin.high()
         setTIApins(ADDR_CTRL1, unique_waveforms[waveform])
@@ -213,7 +226,9 @@ def setPitch(divisor, voice=2):
         tia_rw_pin.high()
         setTIApins(ADDR_FREQ0, divisor - 1)
         tia_rw_pin.low()
+
     sleep(0.001)
+
     if voice == 1 or voice == 2:
         tia_rw_pin.high()
         setTIApins(ADDR_FREQ1, divisor - 1)
