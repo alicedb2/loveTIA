@@ -6,6 +6,10 @@ The clock signal to the TIA is provided by a PIO state machine instead of a crys
 
 The next step is to add CVs for waveform, volume, and for pitch with 1V/oct.
 
+# Schematics
+
+![loveTIA schematics](Schematics/loveTIA.png)
+
 
 (Old version)
 
