@@ -8,7 +8,7 @@ The next step is to add CVs for waveform, volume, and for pitch with 1V/oct.
 
 # Schematics
 
-![loveTIA schematics](Schematics/loveTIA.png)
+![loveTIA schematics](Schematics/loveTIA_schematics.png)
 
 
 (Old version)
